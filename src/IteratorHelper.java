@@ -1,9 +1,10 @@
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
 
-
 public class IteratorHelper<T> {
 	private Thread t;
+	
+	/* The temporary holder for the current item */
 	final LinkedList<T> queue = new LinkedList<T>();
 
 	public IteratorHelper(Runnable r) {
@@ -16,32 +17,52 @@ public class IteratorHelper<T> {
 
 	public T get() {
 		synchronized (queue) {
-			if (queue.isEmpty()) {
-				throw new NoSuchElementException();
-			}else{
-				T elem = queue.removeFirst();
-				queue.notifyAll();
-				return elem;
+			while (queue.isEmpty()) {
+				try {
+					queue.wait();
+				} catch (InterruptedException e) {
+					throw new NoSuchElementException();
+				}
+
 			}
+			if (!queue.isEmpty()){
+                return queue.removeFirst();
+            }
+
 		}
+		return null;
 
 	}
 
 	public void yield(T v) {
 		synchronized (queue) {
 			queue.addLast(v);
-			try {
-				queue.wait();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			queue.notifyAll();
 		}
 	}
 
 	public boolean done() {
 		synchronized (queue) {
-			return queue.isEmpty();
+			while (queue.isEmpty()) {
+				try {
+					queue.wait();
+				} catch (InterruptedException e) {
+					throw new NoSuchElementException();
+				}
+
+			}
+			if (!queue.isEmpty()){
+                return true;
+            }
+
 		}
+		return false;
+	}
+	
+	public void setFinished() {
+		synchronized (queue) {
+			queue.notifyAll();
+		}
+		
 	}
 }
