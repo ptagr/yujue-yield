@@ -3,9 +3,12 @@ import java.util.NoSuchElementException;
 
 public class IteratorHelper<T> {
 	private Thread t;
-	
+
 	/* The temporary holder for the current item */
-	final LinkedList<T> queue = new LinkedList<T>();
+	private final LinkedList<T> queue = new LinkedList<T>();
+	
+	/* Finished indicator */
+	private volatile Boolean finished = new Boolean(false);
 
 	public IteratorHelper(Runnable r) {
 		t = new Thread(r);
@@ -15,9 +18,13 @@ public class IteratorHelper<T> {
 		t.start();
 	}
 
+	/**
+	 * 
+	 * @return
+	 */
 	public T get() {
 		synchronized (queue) {
-			while (queue.isEmpty()) {
+			while (queue.isEmpty() && !finished) {
 				try {
 					queue.wait();
 				} catch (InterruptedException e) {
@@ -25,9 +32,14 @@ public class IteratorHelper<T> {
 				}
 
 			}
-			if (!queue.isEmpty()){
-                return queue.removeFirst();
-            }
+			
+			if (!queue.isEmpty()) {
+				return queue.remove();
+			}
+			
+			if (finished) {
+				throw new NoSuchElementException();
+			}
 
 		}
 		return null;
@@ -36,14 +48,14 @@ public class IteratorHelper<T> {
 
 	public void yield(T v) {
 		synchronized (queue) {
-			queue.addLast(v);
+			queue.add(v);
 			queue.notifyAll();
 		}
 	}
 
 	public boolean done() {
 		synchronized (queue) {
-			while (queue.isEmpty()) {
+			while (queue.isEmpty() && !finished) {
 				try {
 					queue.wait();
 				} catch (InterruptedException e) {
@@ -51,18 +63,25 @@ public class IteratorHelper<T> {
 				}
 
 			}
-			if (!queue.isEmpty()){
-                return true;
-            }
+			
+			if (!queue.isEmpty()) {
+				return false;
+			}
+			
+			if (finished) {
+				return true;
+			}
+
 
 		}
 		return false;
 	}
-	
+
 	public void setFinished() {
 		synchronized (queue) {
+			finished = true;
 			queue.notifyAll();
 		}
-		
+
 	}
 }

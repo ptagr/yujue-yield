@@ -16,7 +16,7 @@ public class Range implements Runnable{
 	}
 	
 	public boolean hasNext() {
-		return ih.done();
+		return !ih.done();
 	}
 	
 	public Integer next(){
